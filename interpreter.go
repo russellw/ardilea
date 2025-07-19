@@ -538,13 +538,21 @@ func (bi *BasicInterpreter) GetOutput() []string {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <program.bas>\n", os.Args[0])
+		os.Exit(1)
+	}
+
+	filename := os.Args[1]
+	programBytes, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading file %s: %v\n", filename, err)
+		os.Exit(1)
+	}
+
 	interpreter := NewBasicInterpreter()
-	
-	program := `10 PRINT "Hello, World!"
-20 LET A = 42
-30 PRINT A`
-	
-	if err := interpreter.Run(program); err != nil {
-		fmt.Printf("Error: %v\n", err)
+	if err := interpreter.Run(string(programBytes)); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
 }

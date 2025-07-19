@@ -3,7 +3,9 @@
     "allow": [
       "Bash(find:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python -m pytest test_basic_interpreter_integration.py -v)",
+      "Bash(go test:*)"
     ],
     "deny": []
   }

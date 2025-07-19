@@ -6,7 +6,10 @@
       "Bash(git commit:*)",
       "Bash(python -m pytest test_basic_interpreter_integration.py -v)",
       "Bash(go test:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(BASIC_INTERPRETER=./basic go test -v .)",
+      "Bash(BASIC_INTERPRETER=./basic go test -v test_runner.go)",
+      "Bash(BASIC_INTERPRETER=./basic go test -v -run TestBasicInterpreterFilesBased test_runner.go)"
     ],
     "deny": []
   }

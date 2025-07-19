@@ -1,0 +1,3 @@
+10 PRINT "Start"
+20 GOTO 999
+30 PRINT "End"

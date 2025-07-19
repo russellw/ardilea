@@ -1,6 +1,26 @@
-# Language-Agnostic BASIC Interpreter Testing
+# File-Based BASIC Interpreter Testing
 
-This test suite provides language-agnostic integration testing for BASIC interpreters. Instead of being tied to a specific implementation, it executes any BASIC interpreter as an external process.
+This test suite provides file-based, language-agnostic integration testing for BASIC interpreters. Test programs are stored as separate `.bas` files with corresponding expected output files, making the specification crystal clear and easy to understand.
+
+## Directory Structure
+
+```
+tests/
+├── basic/              # BASIC test programs
+│   ├── hello.bas
+│   ├── arithmetic.bas
+│   ├── for_loop.bas
+│   └── ...
+├── expected/           # Expected output files
+│   ├── hello.txt
+│   ├── arithmetic.txt
+│   ├── for_loop.txt
+│   └── ...
+└── errors/             # Programs that should fail
+    ├── invalid_goto.bas
+    ├── syntax_error.bas
+    └── ...
+```
 
 ## Usage
 
@@ -8,10 +28,10 @@ Set the `BASIC_INTERPRETER` environment variable to the path of your BASIC inter
 
 ```bash
 # Test with Go implementation
-BASIC_INTERPRETER=./basic go test -v basic_test.go
+BASIC_INTERPRETER=./basic go test -v .
 
 # Test with any other BASIC interpreter
-BASIC_INTERPRETER=/path/to/your/basic go test -v basic_test.go
+BASIC_INTERPRETER=/path/to/your/basic go test -v .
 ```
 
 ## Interpreter Requirements
@@ -53,26 +73,45 @@ go build -o basic interpreter.go
 ```bash
 # Build and test the Go implementation
 go build -o basic interpreter.go
-BASIC_INTERPRETER=./basic go test -v basic_test.go
+BASIC_INTERPRETER=./basic go test -v .
 
 # Run benchmarks
-BASIC_INTERPRETER=./basic go test -bench=. basic_test.go
+BASIC_INTERPRETER=./basic go test -bench=. .
+
+# Test individual programs manually
+./basic tests/basic/hello.bas
+./basic tests/basic/factorial.bas
 ```
 
 ## Adding New Tests
 
-Add test cases to the `tests` slice in `TestBasicInterpreterIntegration()`:
+1. **Create a test program**: Add a new `.bas` file in `tests/basic/`
+   ```basic
+   10 PRINT "Hello, Test!"
+   20 LET A = 42
+   30 PRINT A
+   ```
 
-```go
-{
-    name:     "Test description",
-    program:  `10 PRINT "Your BASIC program"`,
-    expected: []string{"Expected output line 1", "Expected output line 2"},
-},
-```
+2. **Generate expected output**: Run the program and save output
+   ```bash
+   ./basic tests/basic/mytest.bas > tests/expected/mytest.txt
+   ```
+
+3. **The test runner automatically discovers and runs the new test**
 
 ## Error Tests
 
-Error test cases should set `wantErr: true` and will pass if the interpreter exits with a non-zero status.
+Programs in `tests/errors/` are expected to fail and will pass the test if the interpreter exits with a non-zero status.
 
-This approach allows testing any BASIC interpreter implementation (Python, C, Rust, etc.) with the same comprehensive test suite.
+To add error tests, simply add `.bas` files to `tests/errors/` - no expected output files needed.
+
+## Benefits of File-Based Testing
+
+- **Clear Specification**: Each `.bas` file clearly shows what features need implementing
+- **Easy Debugging**: Run individual programs manually to debug issues
+- **Language Agnostic**: Test any BASIC interpreter implementation (Python, C, Rust, etc.)
+- **Version Control Friendly**: Git diffs show actual BASIC code changes
+- **Self-Documenting**: Filename and program content describe the test
+- **No Escaping**: BASIC programs are written in pure BASIC syntax with highlighting
+
+This approach makes the BASIC language specification crystal clear and easy to understand for anyone implementing a BASIC interpreter.

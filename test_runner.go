@@ -102,10 +102,21 @@ func (bt *BasicTester) RunSuccessTests() {
 		testName := bt.GetTestName(testFile)
 		fmt.Printf("Running %s... ", testName)
 
+		// Read BASIC source code for verbose output
+		var sourceCode string
+		if bt.verbose {
+			if content, err := ioutil.ReadFile(testFile); err == nil {
+				sourceCode = strings.TrimSpace(string(content))
+			}
+		}
+
 		// Run the BASIC program
 		actualOutput, err := bt.RunBasicFile(testFile)
 		if err != nil {
 			fmt.Printf("FAIL (execution error: %v)\n", err)
+			if bt.verbose && sourceCode != "" {
+				fmt.Printf("  BASIC code:\n%s\n", bt.indentLines(sourceCode))
+			}
 			bt.failCount++
 			continue
 		}
@@ -114,6 +125,9 @@ func (bt *BasicTester) RunSuccessTests() {
 		expectedOutput, err := bt.ReadExpectedOutput(testName)
 		if err != nil {
 			fmt.Printf("FAIL (missing expected output: %v)\n", err)
+			if bt.verbose && sourceCode != "" {
+				fmt.Printf("  BASIC code:\n%s\n", bt.indentLines(sourceCode))
+			}
 			bt.failCount++
 			continue
 		}
@@ -122,11 +136,17 @@ func (bt *BasicTester) RunSuccessTests() {
 		if actualOutput == expectedOutput {
 			fmt.Println("PASS")
 			if bt.verbose {
+				if sourceCode != "" {
+					fmt.Printf("  BASIC code:\n%s\n", bt.indentLines(sourceCode))
+				}
 				fmt.Printf("  Output: %q\n", actualOutput)
 			}
 			bt.passCount++
 		} else {
 			fmt.Printf("FAIL (output mismatch)\n")
+			if bt.verbose && sourceCode != "" {
+				fmt.Printf("  BASIC code:\n%s\n", bt.indentLines(sourceCode))
+			}
 			fmt.Printf("  Expected: %q\n", expectedOutput)
 			fmt.Printf("  Actual:   %q\n", actualOutput)
 			bt.failCount++
@@ -153,17 +173,31 @@ func (bt *BasicTester) RunErrorTests() {
 		testName := bt.GetTestName(errorFile)
 		fmt.Printf("Running %s... ", testName)
 
+		// Read BASIC source code for verbose output
+		var sourceCode string
+		if bt.verbose {
+			if content, err := ioutil.ReadFile(errorFile); err == nil {
+				sourceCode = strings.TrimSpace(string(content))
+			}
+		}
+
 		// This should fail
 		output, err := bt.RunBasicFile(errorFile)
 		if err != nil {
 			fmt.Println("PASS (correctly failed)")
 			if bt.verbose {
+				if sourceCode != "" {
+					fmt.Printf("  BASIC code:\n%s\n", bt.indentLines(sourceCode))
+				}
 				fmt.Printf("  Error: %v\n", err)
 			}
 			bt.passCount++
 		} else {
 			fmt.Println("FAIL (should have failed but succeeded)")
 			if bt.verbose {
+				if sourceCode != "" {
+					fmt.Printf("  BASIC code:\n%s\n", bt.indentLines(sourceCode))
+				}
 				fmt.Printf("  Unexpected output: %q\n", output)
 			}
 			bt.failCount++
@@ -215,6 +249,15 @@ func (bt *BasicTester) PrintSummary() {
 	} else {
 		fmt.Printf("❌ %d test(s) failed\n", bt.failCount)
 	}
+}
+
+// indentLines adds 4-space indentation to each line
+func (bt *BasicTester) indentLines(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		lines[i] = "    " + line
+	}
+	return strings.Join(lines, "\n")
 }
 
 // HasFailures returns true if any tests failed

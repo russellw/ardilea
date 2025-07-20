@@ -24,8 +24,18 @@ tests/
 
 ## Usage
 
-Set the `BASIC_INTERPRETER` environment variable to the path of your BASIC interpreter executable:
+You can specify the BASIC interpreter executable in two ways:
 
+**Method 1: Command line argument (recommended)**
+```bash
+# Test with Go reference implementation
+go run test_runner.go ./basic
+
+# Test with any other BASIC interpreter
+go run test_runner.go /path/to/your/basic
+```
+
+**Method 2: Environment variable**
 ```bash
 # Test with Go implementation
 BASIC_INTERPRETER=./basic go run test_runner.go
@@ -73,7 +83,7 @@ go build -o basic basic_reference_impl.go
 ```bash
 # Build and test the Go reference implementation
 go build -o basic basic_reference_impl.go
-BASIC_INTERPRETER=./basic go run test_runner.go
+go run test_runner.go ./basic
 
 # Test individual programs manually
 ./basic tests/basic/hello.bas

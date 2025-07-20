@@ -206,10 +206,25 @@ func (bt *BasicTester) HasFailures() bool {
 }
 
 func main() {
-	interpreterPath := os.Getenv("BASIC_INTERPRETER")
+	var interpreterPath string
+	
+	// Check for command line argument first
+	if len(os.Args) >= 2 {
+		interpreterPath = os.Args[1]
+	} else {
+		// Fall back to environment variable
+		interpreterPath = os.Getenv("BASIC_INTERPRETER")
+	}
+	
 	if interpreterPath == "" {
-		fmt.Println("Usage: BASIC_INTERPRETER=./basic go run test_runner.go")
-		fmt.Println("Set BASIC_INTERPRETER environment variable to your interpreter executable")
+		fmt.Println("Usage:")
+		fmt.Println("  go run test_runner.go <interpreter_executable>")
+		fmt.Println("  or")
+		fmt.Println("  BASIC_INTERPRETER=./basic go run test_runner.go")
+		fmt.Println()
+		fmt.Println("Examples:")
+		fmt.Println("  go run test_runner.go ./basic")
+		fmt.Println("  go run test_runner.go /usr/local/bin/my_basic")
 		os.Exit(1)
 	}
 

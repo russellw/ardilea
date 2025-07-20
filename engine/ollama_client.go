@@ -40,7 +40,7 @@ func NewOllamaClient(serverAddr string) *OllamaClient {
 	return &OllamaClient{
 		baseURL: fmt.Sprintf("http://%s", serverAddr),
 		client: &http.Client{
-			Timeout: 300 * time.Second, // 5 minute timeout for LLM responses
+			Timeout: 3600 * time.Second, // 1 hour timeout for LLM responses
 		},
 	}
 }

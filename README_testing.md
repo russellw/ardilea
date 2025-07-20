@@ -65,14 +65,14 @@ The test suite covers:
 ## Building the Go Reference Implementation
 
 ```bash
-go build -o basic interpreter.go
+go build -o basic basic_reference_impl.go
 ```
 
 ## Running Tests
 
 ```bash
-# Build and test the Go implementation
-go build -o basic interpreter.go
+# Build and test the Go reference implementation
+go build -o basic basic_reference_impl.go
 BASIC_INTERPRETER=./basic go run test_runner.go
 
 # Test individual programs manually

@@ -28,10 +28,10 @@ Set the `BASIC_INTERPRETER` environment variable to the path of your BASIC inter
 
 ```bash
 # Test with Go implementation
-BASIC_INTERPRETER=./basic go test -v .
+BASIC_INTERPRETER=./basic go run test_runner.go
 
 # Test with any other BASIC interpreter
-BASIC_INTERPRETER=/path/to/your/basic go test -v .
+BASIC_INTERPRETER=/path/to/your/basic go run test_runner.go
 ```
 
 ## Interpreter Requirements
@@ -73,10 +73,7 @@ go build -o basic interpreter.go
 ```bash
 # Build and test the Go implementation
 go build -o basic interpreter.go
-BASIC_INTERPRETER=./basic go test -v .
-
-# Run benchmarks
-BASIC_INTERPRETER=./basic go test -bench=. .
+BASIC_INTERPRETER=./basic go run test_runner.go
 
 # Test individual programs manually
 ./basic tests/basic/hello.bas
@@ -113,5 +110,29 @@ To add error tests, simply add `.bas` files to `tests/errors/` - no expected out
 - **Version Control Friendly**: Git diffs show actual BASIC code changes
 - **Self-Documenting**: Filename and program content describe the test
 - **No Escaping**: BASIC programs are written in pure BASIC syntax with highlighting
+- **No Dependencies**: Simple `go run` execution, no testing framework needed
+- **Standalone**: Works without go.mod or module system
+
+## Test Runner Output
+
+The test runner provides clear output showing pass/fail for each test:
+
+```
+=== Running Success Tests ===
+Running hello... PASS
+Running arithmetic... PASS
+Running for_loop... PASS
+...
+
+=== Running Error Tests ===
+Running invalid_goto... PASS (correctly failed)
+...
+
+=== Test Summary ===
+Tests run: 19
+Passed: 19
+Failed: 0
+✅ All tests passed!
+```
 
 This approach makes the BASIC language specification crystal clear and easy to understand for anyone implementing a BASIC interpreter.

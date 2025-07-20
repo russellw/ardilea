@@ -1,5 +1,5 @@
 {
   "ollama_server": "192.168.0.63:11434",
-  "model_name": "qwen2.5:32b",
+  "model_name": "qwen3:30b",
   "workspace_dir": "/workspace"
 }

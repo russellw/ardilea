@@ -21,7 +21,7 @@ The Ardilea Engine connects to an Ollama server to interact with large language 
    # Edit config.json to match your setup
    {
      "ollama_server": "192.168.0.63:11434",
-     "model_name": "qwen2.5:32b",
+     "model_name": "qwen3:30b",
      "workspace_dir": "/workspace"
    }
    ```
@@ -54,7 +54,7 @@ The engine reads configuration from `config.json`:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `ollama_server` | `192.168.0.63:11434` | Ollama server address and port |
-| `model_name` | `qwen2.5:32b` | LLM model to use for code generation |
+| `model_name` | `qwen3:30b` | LLM model to use for code generation |
 | `workspace_dir` | `/workspace` | Working directory inside container |
 
 ### Environment Variables
@@ -73,7 +73,7 @@ You can also use environment variables to override config:
 │                 │    │                 │    │                 │
 │ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
 │ │ Workspace   │ │    │ │ Go Engine   │ │    │ │ LLM Model   │ │
-│ │ - BASIC     │ │    │ │ - Config    │ │    │ │ (qwen2.5)   │ │
+│ │ - BASIC     │ │    │ │ - Config    │ │    │ │ (qwen3:30b) │ │
 │ │ - Tests     │ │    │ │ - API Client│ │    │ │             │ │
 │ │ - Output    │ │    │ │ - Agent     │ │    │ │             │ │
 │ └─────────────┘ │    │ └─────────────┘ │    │ └─────────────┘ │
@@ -146,7 +146,7 @@ The engine needs network access to:
    curl http://192.168.0.63:11434/api/tags
    
    # Pull required model
-   docker exec ollama-server ollama pull qwen2.5:32b
+   docker exec ollama-server ollama pull qwen3:30b
    ```
 
 3. **Permission issues**:

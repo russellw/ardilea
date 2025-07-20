@@ -40,7 +40,7 @@ func NewEngine() (*Engine, error) {
 func loadConfig() (*Config, error) {
 	config := &Config{
 		OllamaServer: "192.168.0.63:11434",
-		ModelName:    "qwen2.5:32b",
+		ModelName:    "qwen3:30b",
 		WorkspaceDir: "/workspace",
 	}
 

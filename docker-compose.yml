@@ -13,7 +13,7 @@ services:
       - ./config.json:/workspace/config.json:ro
     environment:
       - OLLAMA_SERVER=192.168.0.63:11434
-      - MODEL_NAME=qwen2.5:32b
+      - MODEL_NAME=qwen3:30b
     networks:
       - ardilea-net
     restart: unless-stopped

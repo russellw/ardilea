@@ -25,7 +25,7 @@ echo Docker is available and running...
 echo.
 
 REM Read current config to get model name
-set MODEL_NAME=qwen2.5:32b
+set MODEL_NAME=qwen3:30b
 if exist config.json (
     echo Reading model name from config.json...
     REM Note: This is a simplified approach - in production you'd parse JSON properly
@@ -49,7 +49,7 @@ echo 2. Download the model: %MODEL_NAME%
 echo 3. Keep the server running for the engine to use
 echo.
 echo Note: Model download may take significant time depending on model size and internet speed.
-echo The qwen2.5:32b model is approximately 19GB.
+echo The qwen3:30b model is approximately 19GB.
 echo.
 
 set /p CONTINUE="Continue? (y/N): "

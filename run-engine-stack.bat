@@ -40,7 +40,7 @@ if not exist config.json (
     echo Creating default config.json...
     echo {> config.json
     echo   "ollama_server": "ollama:11434",>> config.json
-    echo   "model_name": "qwen2.5:32b",>> config.json
+    echo   "model_name": "qwen3:30b",>> config.json
     echo   "workspace_dir": "/workspace">> config.json
     echo }>> config.json
     echo Default configuration created for containerized Ollama.

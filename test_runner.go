@@ -18,10 +18,11 @@ type BasicTester struct {
 	errorsDir       string
 	passCount       int
 	failCount       int
+	verbose         bool
 }
 
 // NewBasicTester creates a new file-based tester
-func NewBasicTester(interpreterPath string) *BasicTester {
+func NewBasicTester(interpreterPath string, verbose bool) *BasicTester {
 	return &BasicTester{
 		interpreterPath: interpreterPath,
 		testsDir:        "tests/basic",
@@ -29,6 +30,7 @@ func NewBasicTester(interpreterPath string) *BasicTester {
 		errorsDir:       "tests/errors",
 		passCount:       0,
 		failCount:       0,
+		verbose:         verbose,
 	}
 }
 
@@ -119,6 +121,9 @@ func (bt *BasicTester) RunSuccessTests() {
 		// Compare outputs
 		if actualOutput == expectedOutput {
 			fmt.Println("PASS")
+			if bt.verbose {
+				fmt.Printf("  Output: %q\n", actualOutput)
+			}
 			bt.passCount++
 		} else {
 			fmt.Printf("FAIL (output mismatch)\n")
@@ -149,12 +154,18 @@ func (bt *BasicTester) RunErrorTests() {
 		fmt.Printf("Running %s... ", testName)
 
 		// This should fail
-		_, err := bt.RunBasicFile(errorFile)
+		output, err := bt.RunBasicFile(errorFile)
 		if err != nil {
 			fmt.Println("PASS (correctly failed)")
+			if bt.verbose {
+				fmt.Printf("  Error: %v\n", err)
+			}
 			bt.passCount++
 		} else {
 			fmt.Println("FAIL (should have failed but succeeded)")
+			if bt.verbose {
+				fmt.Printf("  Unexpected output: %q\n", output)
+			}
 			bt.failCount++
 		}
 	}
@@ -176,9 +187,15 @@ func (bt *BasicTester) RunManualTests() {
 			if strings.Contains(output, "BASIC Interpreter Test") && 
 			   strings.Contains(output, "Program completed successfully") {
 				fmt.Println("PASS")
+				if bt.verbose {
+					fmt.Printf("  Output: %q\n", output)
+				}
 				bt.passCount++
 			} else {
 				fmt.Println("FAIL (unexpected output)")
+				if bt.verbose {
+					fmt.Printf("  Output: %q\n", output)
+				}
 				bt.failCount++
 			}
 		}
@@ -207,24 +224,37 @@ func (bt *BasicTester) HasFailures() bool {
 
 func main() {
 	var interpreterPath string
+	var verbose bool
 	
-	// Check for command line argument first
-	if len(os.Args) >= 2 {
-		interpreterPath = os.Args[1]
-	} else {
-		// Fall back to environment variable
+	// Parse command line arguments
+	args := os.Args[1:]
+	for _, arg := range args {
+		if arg == "-v" || arg == "--verbose" {
+			verbose = true
+		} else if !strings.HasPrefix(arg, "-") {
+			interpreterPath = arg
+			break
+		}
+	}
+	
+	// Fall back to environment variable if no interpreter specified
+	if interpreterPath == "" {
 		interpreterPath = os.Getenv("BASIC_INTERPRETER")
 	}
 	
 	if interpreterPath == "" {
 		fmt.Println("Usage:")
-		fmt.Println("  go run test_runner.go <interpreter_executable>")
+		fmt.Println("  go run test_runner.go [options] <interpreter_executable>")
 		fmt.Println("  or")
-		fmt.Println("  BASIC_INTERPRETER=./basic go run test_runner.go")
+		fmt.Println("  BASIC_INTERPRETER=./basic go run test_runner.go [options]")
+		fmt.Println()
+		fmt.Println("Options:")
+		fmt.Println("  -v, --verbose    Show detailed output for each test")
 		fmt.Println()
 		fmt.Println("Examples:")
 		fmt.Println("  go run test_runner.go ./basic")
-		fmt.Println("  go run test_runner.go /usr/local/bin/my_basic")
+		fmt.Println("  go run test_runner.go -v ./basic")
+		fmt.Println("  go run test_runner.go --verbose /usr/local/bin/my_basic")
 		os.Exit(1)
 	}
 
@@ -240,8 +270,11 @@ func main() {
 	}
 
 	fmt.Printf("Testing BASIC interpreter: %s\n", interpreterPath)
+	if verbose {
+		fmt.Println("Verbose mode enabled - showing detailed output")
+	}
 	
-	tester := NewBasicTester(interpreterPath)
+	tester := NewBasicTester(interpreterPath, verbose)
 	
 	// Run all test suites
 	tester.RunSuccessTests()

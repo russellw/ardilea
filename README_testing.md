@@ -31,8 +31,14 @@ You can specify the BASIC interpreter executable in two ways:
 # Test with Go reference implementation
 go run test_runner.go ./basic
 
+# Test with verbose output showing actual program results
+go run test_runner.go -v ./basic
+
 # Test with any other BASIC interpreter
 go run test_runner.go /path/to/your/basic
+
+# Test with verbose mode using long form
+go run test_runner.go --verbose /path/to/your/basic
 ```
 
 **Method 2: Environment variable**
@@ -84,6 +90,9 @@ go build -o basic basic_reference_impl.go
 # Build and test the Go reference implementation
 go build -o basic basic_reference_impl.go
 go run test_runner.go ./basic
+
+# Run with verbose output to see program results
+go run test_runner.go -v ./basic
 
 # Test individual programs manually
 ./basic tests/basic/hello.bas
@@ -143,6 +152,22 @@ Tests run: 19
 Passed: 19
 Failed: 0
 ✅ All tests passed!
+```
+
+**Verbose Mode** (`-v` or `--verbose`) shows the actual output of each test:
+
+```
+=== Running Success Tests ===
+Running hello... PASS
+  Output: "Hello, World!\n"
+Running arithmetic... PASS
+  Output: "15\n5\n50\n2\n"
+...
+
+=== Running Error Tests ===
+Running invalid_goto... PASS (correctly failed)
+  Error: interpreter error: exit status 1, stderr: Error: error at line 20: undefined line number 999 in GOTO statement
+...
 ```
 
 This approach makes the BASIC language specification crystal clear and easy to understand for anyone implementing a BASIC interpreter.

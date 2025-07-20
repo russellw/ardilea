@@ -233,6 +233,11 @@ func main() {
 		fmt.Printf("Error: Interpreter not found at %s\n", interpreterPath)
 		os.Exit(1)
 	}
+	
+	// Fix relative path issue - if path doesn't start with ./ or /, prepend ./
+	if !strings.HasPrefix(interpreterPath, "/") && !strings.HasPrefix(interpreterPath, "./") && !strings.HasPrefix(interpreterPath, "../") {
+		interpreterPath = "./" + interpreterPath
+	}
 
 	fmt.Printf("Testing BASIC interpreter: %s\n", interpreterPath)
 	

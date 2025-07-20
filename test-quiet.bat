@@ -6,7 +6,6 @@ echo Building BASIC interpreter...
 go build -o basic.exe basic_reference_impl.go
 if errorlevel 1 (
     echo ERROR: Failed to build BASIC interpreter
-    pause
     exit /b 1
 )
 
@@ -17,10 +16,8 @@ go run test_runner.go basic.exe
 if errorlevel 1 (
     echo.
     echo Some tests failed. Check output above.
-    pause
     exit /b 1
 )
 
 echo.
 echo All tests passed successfully!
-pause

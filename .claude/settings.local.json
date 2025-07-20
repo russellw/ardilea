@@ -11,7 +11,8 @@
       "Bash(BASIC_INTERPRETER=./basic go test -v test_runner.go)",
       "Bash(BASIC_INTERPRETER=./basic go test -v -run TestBasicInterpreterFilesBased test_runner.go)",
       "Bash(BASIC_INTERPRETER=./basic go run test_runner.go)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

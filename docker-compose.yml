@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  ardilea-engine:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: ardilea-engine
+    volumes:
+      # Mount workspace for persistent development
+      - ./workspace:/workspace/output
+      # Mount custom config if needed
+      - ./config.json:/workspace/config.json:ro
+    environment:
+      - OLLAMA_SERVER=192.168.0.63:11434
+      - MODEL_NAME=qwen2.5:32b
+    networks:
+      - ardilea-net
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    
+  # Optional: Include Ollama server in the stack
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-server
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - ardilea-net
+    restart: unless-stopped
+    # Uncomment if you have NVIDIA GPU support
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  ardilea-net:
+    driver: bridge

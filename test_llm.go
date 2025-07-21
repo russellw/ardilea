@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -28,6 +29,9 @@ func main() {
 	serverAddr := "192.168.0.63:11434"
 	modelName := "qwen3:30b"
 	baseURL := fmt.Sprintf("http://%s", serverAddr)
+
+	// Seed random number generator
+	rand.Seed(time.Now().UnixNano())
 
 	log.Printf("Testing LLM at %s with model %s", baseURL, modelName)
 
@@ -94,57 +98,93 @@ func main() {
 	log.Printf("Response length: %d characters", len(response.Response))
 	log.Printf("Response: %q", response.Response)
 
-	// Test 3: Programming prompt (similar to what the engine sends)
-	log.Println("\n=== Test 3: Programming Prompt ===")
-	codingPrompt := `You are an expert software developer. Your task is to implement a simple BASIC interpreter in Go. 
-
-Requirements:
-1. Support line-numbered BASIC syntax
-2. Implement PRINT and LET statements
-3. Include basic error handling
-
-Please provide a minimal Go implementation.`
-
-	log.Printf("Full programming prompt to be sent:\n%s", codingPrompt)
-	log.Printf("\nPrompt length: %d characters", len(codingPrompt))
-
-	req.Prompt = codingPrompt
-	jsonData, err = json.Marshal(req)
-	if err != nil {
-		log.Fatalf("Failed to marshal request: %v", err)
+	// Test 3: Multiple Programming Prompts
+	log.Println("\n=== Test 3: Programming Prompts (Random Order) ===")
+	
+	programmingPrompts := []string{
+		"Write a simple Go function to calculate factorial of a number.",
+		"Create a Go program that reverses a string without using built-in functions.",
+		"Implement a basic stack data structure in Go with push and pop operations.",
+		"Write a Go function to check if a number is prime.",
+		"Create a Go program that finds the largest element in an array.",
+		"Implement a simple binary search function in Go.",
+		"Write a Go function to count vowels in a string.",
+		"Create a Go program that sorts an array using bubble sort.",
+		"Implement a basic queue data structure in Go.",
+		"Write a Go function to calculate the nth Fibonacci number.",
 	}
 
-	log.Println("Sending programming prompt...")
-	start = time.Now()
-
-	resp, err = client.Post(
-		baseURL+"/api/generate",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		log.Fatalf("Failed to send programming request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		log.Fatalf("Programming API request failed with status %d: %s", resp.StatusCode, string(body))
+	// Shuffle the prompts for random order
+	for i := len(programmingPrompts) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		programmingPrompts[i], programmingPrompts[j] = programmingPrompts[j], programmingPrompts[i]
 	}
 
-	body, err = io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Failed to read programming response: %v", err)
+	var totalDuration time.Duration
+	successCount := 0
+
+	for i, prompt := range programmingPrompts {
+		log.Printf("\n--- Programming Test %d/10 ---", i+1)
+		log.Printf("Prompt: %s", prompt)
+		log.Printf("Prompt length: %d characters", len(prompt))
+
+		req.Prompt = prompt
+		jsonData, err = json.Marshal(req)
+		if err != nil {
+			log.Printf("Failed to marshal request %d: %v", i+1, err)
+			continue
+		}
+
+		log.Printf("Sending programming prompt %d...", i+1)
+		start = time.Now()
+
+		resp, err = client.Post(
+			baseURL+"/api/generate",
+			"application/json",
+			bytes.NewBuffer(jsonData),
+		)
+		if err != nil {
+			log.Printf("Failed to send programming request %d: %v", i+1, err)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("Programming API request %d failed with status %d: %s", i+1, resp.StatusCode, string(body))
+			resp.Body.Close()
+			continue
+		}
+
+		body, err = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			log.Printf("Failed to read programming response %d: %v", i+1, err)
+			continue
+		}
+
+		var response TestResponse
+		if err := json.Unmarshal(body, &response); err != nil {
+			log.Printf("Failed to parse programming response %d: %v", i+1, err)
+			continue
+		}
+
+		duration := time.Since(start)
+		totalDuration += duration
+		successCount++
+
+		log.Printf("Programming prompt %d completed in %v", i+1, duration)
+		log.Printf("Response length: %d characters", len(response.Response))
+		log.Printf("First 150 chars: %q", truncateString(response.Response, 150))
 	}
 
-	if err := json.Unmarshal(body, &response); err != nil {
-		log.Fatalf("Failed to parse programming response: %v", err)
+	// Summary of programming tests
+	log.Printf("\n=== Programming Tests Summary ===")
+	log.Printf("Successful prompts: %d/10", successCount)
+	if successCount > 0 {
+		avgDuration := totalDuration / time.Duration(successCount)
+		log.Printf("Total time: %v", totalDuration)
+		log.Printf("Average response time: %v", avgDuration)
 	}
-
-	duration = time.Since(start)
-	log.Printf("Programming prompt completed in %v", duration)
-	log.Printf("Response length: %d characters", len(response.Response))
-	log.Printf("First 200 chars: %q", truncateString(response.Response, 200))
 
 	// Test 4: Model info
 	log.Println("\n=== Test 4: Model Information ===")

@@ -67,7 +67,7 @@ echo.
 
 docker run -it --rm ^
     --name ardilea-engine ^
-    -v "%cd%\workspace:/workspace/output" ^
+    -v "%cd%\workspace:/workspace" ^
     -v "%cd%\config.json:/workspace/config.json:ro" ^
     ardilea-engine
 

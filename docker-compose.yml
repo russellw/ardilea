@@ -8,7 +8,7 @@ services:
     container_name: ardilea-engine
     volumes:
       # Mount workspace for persistent development
-      - ./workspace:/workspace/output
+      - ./workspace:/workspace
       # Mount custom config if needed
       - ./config.json:/workspace/config.json:ro
     environment:

@@ -42,7 +42,7 @@ The Ardilea Engine connects to an Ollama server to interact with large language 
 
    # Run the engine
    docker run -it --rm \
-     -v $(pwd)/workspace:/workspace/output \
+     -v $(pwd)/workspace:/workspace \
      -v $(pwd)/config.json:/workspace/config.json:ro \
      ardilea-engine
    ```
@@ -92,6 +92,12 @@ You can also use environment variables to override config:
 - Implements features based on test requirements
 - Iterates on improvements based on test results
 
+### Workspace Tracking
+- Creates before/after snapshots of all workspace files
+- Tracks added, removed, and modified files using MD5 hashing
+- Generates detailed reports: `workspace-report.json` and `workspace-summary.txt`
+- Displays change summary in console after completion
+
 ### Features
 - **Config-driven**: Easy setup with JSON configuration
 - **Ollama Integration**: Native support for Ollama API
@@ -110,7 +116,8 @@ You can also use environment variables to override config:
 │   ├── expected/*.txt     # Expected outputs
 │   └── errors/*.bas       # Error test cases
 ├── config.json            # Engine configuration
-└── output/                # Generated artifacts (mounted)
+├── workspace-report.json  # Detailed change report (generated)
+└── workspace-summary.txt  # Human-readable summary (generated)
 ```
 
 ## Development Workflow
@@ -120,6 +127,39 @@ You can also use environment variables to override config:
 3. **Code Generation**: LLM generates improvements or new code
 4. **Testing**: Engine runs test suite to verify changes
 5. **Iteration**: Process repeats until goals are met
+
+## Viewing Results
+
+After the engine completes, check the `workspace/` directory for:
+
+### Generated Reports
+```bash
+# View human-readable summary
+cat workspace/workspace-summary.txt
+
+# View detailed JSON report
+cat workspace/workspace-report.json | jq .
+
+# List all changes
+grep -E "^\s*[+~-]" workspace/workspace-summary.txt
+```
+
+### Example Output
+```
+Workspace changes from 2024-01-20 15:30:22 to 2024-01-20 15:45:33:
+- Files added: 3
+- Files removed: 0  
+- Files modified: 2
+
+Added files:
+  + src/new_interpreter.go
+  + tests/new_test.bas
+  + docs/improvements.md
+
+Modified files:
+  ~ basic_reference_impl.go (size: 15234->16789 bytes)
+  ~ README.md (size: 2451->3102 bytes)
+```
 
 ## Network Requirements
 

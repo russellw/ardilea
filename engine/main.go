@@ -105,9 +105,11 @@ func (e *Engine) Run() error {
 	}
 
 	// Check if we can connect to Ollama
+	log.Printf("Connecting to Ollama server at %s...", e.config.OllamaServer)
 	if err := e.client.HealthCheck(); err != nil {
-		return fmt.Errorf("failed to connect to Ollama server: %v", err)
+		return fmt.Errorf("failed to connect to Ollama server at %s: %v", e.config.OllamaServer, err)
 	}
+	log.Println("Successfully connected to Ollama server")
 
 	// Take a snapshot before starting
 	log.Println("Creating workspace snapshot before engine run...")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -40,7 +41,7 @@ func NewOllamaClient(serverAddr string) *OllamaClient {
 	return &OllamaClient{
 		baseURL: fmt.Sprintf("http://%s", serverAddr),
 		client: &http.Client{
-			Timeout: 3600 * time.Second, // 1 hour timeout for LLM responses
+			Timeout: 3 * 60 * 60 * time.Second, // 3 hour timeout for LLM responses
 		},
 	}
 }
@@ -62,6 +63,8 @@ func (c *OllamaClient) HealthCheck() error {
 
 // Generate sends a prompt to the specified model and returns the response
 func (c *OllamaClient) Generate(model, prompt string) (string, error) {
+	log.Printf("Sending request to model %s (prompt length: %d chars)", model, len(prompt))
+	
 	req := GenerateRequest{
 		Model:  model,
 		Prompt: prompt,
@@ -73,13 +76,14 @@ func (c *OllamaClient) Generate(model, prompt string) (string, error) {
 		return "", fmt.Errorf("failed to marshal request: %v", err)
 	}
 
+	log.Println("Waiting for LLM response... (this may take several minutes for complex requests)")
 	resp, err := c.client.Post(
 		c.baseURL+"/api/generate",
 		"application/json",
 		bytes.NewBuffer(jsonData),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to send request: %v", err)
+		return "", fmt.Errorf("failed to send request to %s: %v", c.baseURL+"/api/generate", err)
 	}
 	defer resp.Body.Close()
 
@@ -98,6 +102,7 @@ func (c *OllamaClient) Generate(model, prompt string) (string, error) {
 		return "", fmt.Errorf("failed to parse response: %v", err)
 	}
 
+	log.Printf("Received LLM response (length: %d chars)", len(response.Response))
 	return response.Response, nil
 }
 

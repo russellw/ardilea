@@ -1,11 +1,16 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 )
 
 // Config holds the engine configuration
@@ -13,6 +18,31 @@ type Config struct {
 	OllamaServer string `json:"ollama_server"`
 	ModelName    string `json:"model_name"`
 	WorkspaceDir string `json:"workspace_dir"`
+}
+
+// FileInfo represents information about a file
+type FileInfo struct {
+	Path    string    `json:"path"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time"`
+	Hash    string    `json:"hash"`
+	IsDir   bool      `json:"is_dir"`
+}
+
+// WorkspaceSnapshot represents the state of the workspace at a point in time
+type WorkspaceSnapshot struct {
+	Timestamp time.Time            `json:"timestamp"`
+	Files     map[string]FileInfo  `json:"files"`
+}
+
+// WorkspaceReport compares before and after snapshots
+type WorkspaceReport struct {
+	Before   WorkspaceSnapshot `json:"before"`
+	After    WorkspaceSnapshot `json:"after"`
+	Added    []string          `json:"added"`
+	Removed  []string          `json:"removed"`
+	Modified []string          `json:"modified"`
+	Summary  string            `json:"summary"`
 }
 
 // Engine represents the LLM agent engine
@@ -79,8 +109,32 @@ func (e *Engine) Run() error {
 		return fmt.Errorf("failed to connect to Ollama server: %v", err)
 	}
 
+	// Take a snapshot before starting
+	log.Println("Creating workspace snapshot before engine run...")
+	beforeSnapshot, err := e.takeWorkspaceSnapshot()
+	if err != nil {
+		return fmt.Errorf("failed to create before snapshot: %v", err)
+	}
+
 	// Start the development session
-	return e.startDevelopmentSession()
+	err = e.startDevelopmentSession()
+
+	// Take a snapshot after completion (regardless of success/failure)
+	log.Println("Creating workspace snapshot after engine run...")
+	afterSnapshot, err2 := e.takeWorkspaceSnapshot()
+	if err2 != nil {
+		log.Printf("Warning: failed to create after snapshot: %v", err2)
+	} else {
+		// Generate and save the report
+		report := e.generateWorkspaceReport(beforeSnapshot, afterSnapshot)
+		if reportErr := e.saveWorkspaceReport(report); reportErr != nil {
+			log.Printf("Warning: failed to save workspace report: %v", reportErr)
+		} else {
+			log.Println("Workspace report saved to workspace-report.json")
+		}
+	}
+
+	return err
 }
 
 // startDevelopmentSession begins the interactive development process
@@ -188,6 +242,185 @@ func (e *Engine) scanWorkspace() (string, error) {
 	})
 
 	return result, err
+}
+
+// takeWorkspaceSnapshot creates a snapshot of the current workspace state
+func (e *Engine) takeWorkspaceSnapshot() (WorkspaceSnapshot, error) {
+	snapshot := WorkspaceSnapshot{
+		Timestamp: time.Now(),
+		Files:     make(map[string]FileInfo),
+	}
+
+	err := filepath.Walk(e.config.WorkspaceDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Get relative path from workspace root
+		relPath, err := filepath.Rel(e.config.WorkspaceDir, path)
+		if err != nil {
+			return err
+		}
+
+		// Skip hidden files and directories
+		if strings.HasPrefix(filepath.Base(relPath), ".") {
+			return nil
+		}
+
+		fileInfo := FileInfo{
+			Path:    relPath,
+			Size:    info.Size(),
+			ModTime: info.ModTime(),
+			IsDir:   info.IsDir(),
+		}
+
+		// Calculate hash for files (not directories)
+		if !info.IsDir() {
+			hash, err := e.calculateFileHash(path)
+			if err != nil {
+				log.Printf("Warning: failed to hash file %s: %v", relPath, err)
+				hash = ""
+			}
+			fileInfo.Hash = hash
+		}
+
+		snapshot.Files[relPath] = fileInfo
+		return nil
+	})
+
+	return snapshot, err
+}
+
+// calculateFileHash computes MD5 hash of a file
+func (e *Engine) calculateFileHash(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+// generateWorkspaceReport compares two snapshots and generates a detailed report
+func (e *Engine) generateWorkspaceReport(before, after WorkspaceSnapshot) WorkspaceReport {
+	report := WorkspaceReport{
+		Before: before,
+		After:  after,
+		Added:  []string{},
+		Removed: []string{},
+		Modified: []string{},
+	}
+
+	// Find added files
+	for path := range after.Files {
+		if _, exists := before.Files[path]; !exists {
+			report.Added = append(report.Added, path)
+		}
+	}
+
+	// Find removed files
+	for path := range before.Files {
+		if _, exists := after.Files[path]; !exists {
+			report.Removed = append(report.Removed, path)
+		}
+	}
+
+	// Find modified files
+	for path, afterFile := range after.Files {
+		if beforeFile, exists := before.Files[path]; exists {
+			// Check if file was modified (different hash, size, or mod time)
+			if !afterFile.IsDir && !beforeFile.IsDir {
+				if afterFile.Hash != beforeFile.Hash {
+					report.Modified = append(report.Modified, path)
+				}
+			}
+		}
+	}
+
+	// Sort for consistent output
+	sort.Strings(report.Added)
+	sort.Strings(report.Removed)
+	sort.Strings(report.Modified)
+
+	// Generate summary
+	report.Summary = e.generateSummary(report)
+
+	return report
+}
+
+// generateSummary creates a human-readable summary of changes
+func (e *Engine) generateSummary(report WorkspaceReport) string {
+	var summary strings.Builder
+	
+	summary.WriteString(fmt.Sprintf("Workspace changes from %s to %s:\n",
+		report.Before.Timestamp.Format("2006-01-02 15:04:05"),
+		report.After.Timestamp.Format("2006-01-02 15:04:05")))
+	
+	summary.WriteString(fmt.Sprintf("- Files added: %d\n", len(report.Added)))
+	summary.WriteString(fmt.Sprintf("- Files removed: %d\n", len(report.Removed)))
+	summary.WriteString(fmt.Sprintf("- Files modified: %d\n", len(report.Modified)))
+	
+	if len(report.Added) > 0 {
+		summary.WriteString("\nAdded files:\n")
+		for _, file := range report.Added {
+			summary.WriteString(fmt.Sprintf("  + %s\n", file))
+		}
+	}
+	
+	if len(report.Removed) > 0 {
+		summary.WriteString("\nRemoved files:\n")
+		for _, file := range report.Removed {
+			summary.WriteString(fmt.Sprintf("  - %s\n", file))
+		}
+	}
+	
+	if len(report.Modified) > 0 {
+		summary.WriteString("\nModified files:\n")
+		for _, file := range report.Modified {
+			beforeInfo := report.Before.Files[file]
+			afterInfo := report.After.Files[file]
+			summary.WriteString(fmt.Sprintf("  ~ %s (size: %d->%d bytes)\n", 
+				file, beforeInfo.Size, afterInfo.Size))
+		}
+	}
+	
+	return summary.String()
+}
+
+// saveWorkspaceReport saves the workspace report to a JSON file
+func (e *Engine) saveWorkspaceReport(report WorkspaceReport) error {
+	reportPath := filepath.Join(e.config.WorkspaceDir, "workspace-report.json")
+	
+	// Pretty print JSON
+	jsonData, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal report: %v", err)
+	}
+	
+	if err := os.WriteFile(reportPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write report file: %v", err)
+	}
+	
+	// Also save a human-readable summary
+	summaryPath := filepath.Join(e.config.WorkspaceDir, "workspace-summary.txt")
+	if err := os.WriteFile(summaryPath, []byte(report.Summary), 0644); err != nil {
+		log.Printf("Warning: failed to write summary file: %v", err)
+	}
+	
+	// Print summary to console
+	fmt.Println("\n" + strings.Repeat("=", 60))
+	fmt.Println("WORKSPACE CHANGE REPORT")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(report.Summary)
+	fmt.Println(strings.Repeat("=", 60))
+	
+	return nil
 }
 
 func main() {

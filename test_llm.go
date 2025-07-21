@@ -105,13 +105,16 @@ Requirements:
 
 Please provide a minimal Go implementation.`
 
+	log.Printf("Full programming prompt to be sent:\n%s", codingPrompt)
+	log.Printf("\nPrompt length: %d characters", len(codingPrompt))
+
 	req.Prompt = codingPrompt
 	jsonData, err = json.Marshal(req)
 	if err != nil {
 		log.Fatalf("Failed to marshal request: %v", err)
 	}
 
-	log.Printf("Sending programming prompt (%d chars)", len(codingPrompt))
+	log.Println("Sending programming prompt...")
 	start = time.Now()
 
 	resp, err = client.Post(

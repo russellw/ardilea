@@ -19,13 +19,6 @@ echo WARNING: This test uses complex prompts that may take 2-10 minutes each.
 echo The complete test could take 30-60 minutes to finish.
 echo.
 
-set /p CONTINUE="Continue with advanced test? (y/N): "
-if /i not "%CONTINUE%"=="y" (
-    echo Test cancelled.
-    exit /b 0
-)
-
-echo.
 echo Starting advanced test...
 REM Run the test with timestamps
 echo Test started at %TIME%
@@ -39,4 +32,3 @@ echo - Simple responses (under 30 seconds) may indicate incomplete processing
 echo - Timeouts on advanced prompts may indicate server resource limits
 echo - Compare with simple test results to identify complexity handling
 echo.
-pause

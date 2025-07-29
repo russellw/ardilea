@@ -8,6 +8,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -98,6 +100,13 @@ func main() {
 	log.Printf("Response length: %d characters", len(response.Response))
 	log.Printf("Response: %q", response.Response)
 
+	// Save simple prompt response to file
+	if err := os.WriteFile("simple_prompt_response.txt", []byte(response.Response), 0644); err != nil {
+		log.Printf("Failed to save simple prompt response to file: %v", err)
+	} else {
+		log.Printf("Simple prompt response saved to simple_prompt_response.txt")
+	}
+
 	// Test 3: Advanced Programming Prompts
 	log.Println("\n=== Test 3: Advanced Programming Prompts (Random Order) ===")
 	
@@ -177,6 +186,14 @@ func main() {
 		log.Printf("First 200 chars: %q", truncateString(response.Response, 200))
 		log.Printf("Contains 'func' keyword: %t", contains(response.Response, "func"))
 		log.Printf("Contains 'package' keyword: %t", contains(response.Response, "package"))
+
+		// Save advanced prompt response to file
+		filename := "advanced_prompt_" + strconv.Itoa(i+1) + "_response.txt"
+		if err := os.WriteFile(filename, []byte(response.Response), 0644); err != nil {
+			log.Printf("Failed to save advanced prompt %d response to file: %v", i+1, err)
+		} else {
+			log.Printf("Advanced prompt %d response saved to %s", i+1, filename)
+		}
 	}
 
 	// Summary of advanced programming tests

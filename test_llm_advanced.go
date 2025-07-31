@@ -41,6 +41,35 @@ func sanitizeModelName(modelName string) string {
 	return sanitized
 }
 
+func generateFilenameFromPrompt(prompt string) string {
+	// Take first few words from the prompt to create a descriptive filename
+	words := strings.Fields(prompt)
+	maxWords := 5
+	if len(words) > maxWords {
+		words = words[:maxWords]
+	}
+	
+	// Join words and sanitize for filename
+	filename := strings.Join(words, "_")
+	
+	// Replace invalid Windows filename characters
+	invalidChars := []string{"<", ">", ":", "\"", "/", "\\", "|", "?", "*", "."}
+	for _, char := range invalidChars {
+		filename = strings.ReplaceAll(filename, char, "_")
+	}
+	
+	// Convert to lowercase and limit length
+	filename = strings.ToLower(filename)
+	if len(filename) > 50 {
+		filename = filename[:50]
+	}
+	
+	// Remove trailing underscores
+	filename = strings.TrimRight(filename, "_")
+	
+	return filename + "_response.txt"
+}
+
 func main() {
 	// Configuration
 	serverAddr := "192.168.0.63:11434"
@@ -212,7 +241,7 @@ func main() {
 		log.Printf("Contains 'package' keyword: %t", contains(response.Response, "package"))
 
 		// Save advanced prompt response to file
-		filename := "advanced_prompt_" + strconv.Itoa(i+1) + "_response.txt"
+		filename := generateFilenameFromPrompt(prompt)
 		filePath := filepath.Join(resultsDir, filename)
 		if err := os.WriteFile(filePath, []byte(response.Response), 0644); err != nil {
 			log.Printf("Failed to save advanced prompt %d response to file: %v", i+1, err)

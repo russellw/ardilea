@@ -42,10 +42,6 @@ Thumbs.db
 *.temp
 *.log
 
-# LLM test response files
-simple_prompt_response.txt
-advanced_prompt_*_response.txt
-
 # Environment files
 .env
 .envrc

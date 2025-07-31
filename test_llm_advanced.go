@@ -9,7 +9,9 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,11 +28,32 @@ type TestResponse struct {
 	Done      bool      `json:"done"`
 }
 
+func sanitizeModelName(modelName string) string {
+	// Replace invalid Windows filename characters with underscores
+	invalidChars := []string{"<", ">", ":", "\"", "/", "\\", "|", "?", "*"}
+	sanitized := modelName
+	for _, char := range invalidChars {
+		sanitized = strings.ReplaceAll(sanitized, char, "_")
+	}
+	// Also replace spaces and colons commonly found in model names
+	sanitized = strings.ReplaceAll(sanitized, " ", "_")
+	sanitized = strings.ReplaceAll(sanitized, ":", "_")
+	return sanitized
+}
+
 func main() {
 	// Configuration
 	serverAddr := "192.168.0.63:11434"
 	modelName := "qwen3:30b"
 	baseURL := fmt.Sprintf("http://%s", serverAddr)
+
+	// Create results directory structure
+	sanitizedModelName := sanitizeModelName(modelName)
+	resultsDir := filepath.Join("results", sanitizedModelName)
+	if err := os.MkdirAll(resultsDir, 0755); err != nil {
+		log.Fatalf("Failed to create results directory: %v", err)
+	}
+	log.Printf("Results will be saved to: %s", resultsDir)
 
 	// Seed random number generator
 	rand.Seed(time.Now().UnixNano())
@@ -101,10 +124,11 @@ func main() {
 	log.Printf("Response: %q", response.Response)
 
 	// Save simple prompt response to file
-	if err := os.WriteFile("simple_prompt_response.txt", []byte(response.Response), 0644); err != nil {
+	simpleResponseFile := filepath.Join(resultsDir, "simple_prompt_response.txt")
+	if err := os.WriteFile(simpleResponseFile, []byte(response.Response), 0644); err != nil {
 		log.Printf("Failed to save simple prompt response to file: %v", err)
 	} else {
-		log.Printf("Simple prompt response saved to simple_prompt_response.txt")
+		log.Printf("Simple prompt response saved to %s", simpleResponseFile)
 	}
 
 	// Test 3: Advanced Programming Prompts
@@ -189,10 +213,11 @@ func main() {
 
 		// Save advanced prompt response to file
 		filename := "advanced_prompt_" + strconv.Itoa(i+1) + "_response.txt"
-		if err := os.WriteFile(filename, []byte(response.Response), 0644); err != nil {
+		filePath := filepath.Join(resultsDir, filename)
+		if err := os.WriteFile(filePath, []byte(response.Response), 0644); err != nil {
 			log.Printf("Failed to save advanced prompt %d response to file: %v", i+1, err)
 		} else {
-			log.Printf("Advanced prompt %d response saved to %s", i+1, filename)
+			log.Printf("Advanced prompt %d response saved to %s", i+1, filePath)
 		}
 	}
 

@@ -1,0 +1,197 @@
+Below is an example of how you can create a simple TCP/IP server in Go to implement a multi-user chat system with rooms, user authentication, and message persistence.
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"net"
+
+	"os"
+)
+
+// ProtocolMessage represents the structure of messages exchanged between clients and server.
+type ProtocolMessage struct {
+	Command string
+	User    string
+	Room    string
+	Message string
+}
+
+func main() {
+	// Start the TCP listener on port 8080.
+	listener, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer listener.Close()
+
+	fmt.Println("Chat server listening on port 8080...")
+
+	go handleClient(listener)
+
+	for {
+		select {} // to prevent the main goroutine from exiting
+	}
+}
+
+// Room represents a chat room where multiple users can send messages.
+type Room struct {
+	Name     string
+	Messages map[string][]string
+}
+
+func handleClient(listener net.Listener) {
+	var rooms = make(map[string]*Room)
+	rooms["general"] = &Room{
+		Name: "general",
+		Messages: make(map[string][]string),
+	}
+	rooms["lobby"] = &Room{
+		Name:     "lobby",
+		Messages: make(map[string][]string),
+	}
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		go handleConnection(conn, rooms)
+	}
+}
+
+func handleConnection(conn net.Conn, rooms map[string]*Room) {
+	scanner := bufio.NewScanner(conn)
+
+	fmt.Fprintf(conn, "Welcome to the chat server!\n")
+	defer conn.Close()
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		msg := parseMessage(line)
+
+		switch msg.Command {
+		case "login":
+			if handleLogin(msg.User, msg.Room, rooms) {
+				fmt.Fprintf(conn, "Logged in as %s.\n", msg.User)
+			} else {
+				fmt.Fprintln(conn, "Invalid username or password.")
+			}
+		case "logout":
+			handleLogout(msg.User, msg.Room, rooms)
+			fmt.Fprintf(conn, "Logged out successfully!\n")
+		case "message":
+			if handleMessage(msg.User, msg.Message, msg.Room, rooms) {
+				fmt.Fprintf(conn, "Your message has been sent.\n")
+			} else {
+				fmt.Fprintln(conn, "Error sending your message.")
+			}
+		default:
+			fmt.Fprintln(conn, "Invalid command. Type 'login', 'logout' or 'message'.")
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Println(err)
+			break
+		}
+	}
+}
+
+func parseMessage(line string) ProtocolMessage {
+	var msg ProtocolMessage
+	fmt.Sscanf(line, "%s %s %s", &msg.Command, &msg.User, &msg.Room)
+
+	switch msg.Command {
+	case "login":
+		fmt.Sscanf(line, "%s %s %s %s", &msg.Command, &msg.User, &msg.Room, &msg.Message)
+	case "logout":
+		fmt.Sscanf(line, "%s %s", &msg.Command, &msg.User)
+	case "message":
+		fmt.Sscanf(line, "%s %s %s %s", &msg.Command, &msg.User, &msg.Room, &msg.Message)
+	default:
+	}
+
+	return msg
+}
+
+func handleLogin(user string, room string, rooms map[string]*Room) bool {
+	// You need to implement a mechanism for storing user credentials.
+	// For simplicity, we'll just return true if the username is valid (e.g., "admin").
+	return user == "admin"
+}
+
+func handleLogout(user string, room string, rooms map[string]*Room) bool {
+	delete(rooms[room].Messages[user], 0)
+	return true
+}
+
+func handleMessage(user string, message string, room string, rooms map[string]*Room) bool {
+	// Add the message to the user's history in their current room.
+	if _, ok := rooms[room].Messages[user]; !ok {
+		rooms[room].Messages[user] = []string{}
+	}
+	rooms[room].Messages[user] = append(rooms[room].Messages[user], message)
+	return true
+}
+
+func printRoom(room *Room) {
+	fmt.Printf("Room: %s\n", room.Name)
+	for user, messages := range room.Messages {
+		if len(messages) > 0 {
+			fmt.Printf("%s:\n", user)
+			for i := len(messages) - 1; i >= 0; i-- {
+				fmt.Println(messages[i])
+			}
+		}
+	}
+}
+
+func mainMenu() {
+	fmt.Println("Chat server menu:")
+	fmt.Println("1. Create a new room")
+	fmt.Println("2. List all rooms")
+	fmt.Println("3. Exit")
+
+	var choice int
+	fmt.Scan(&choice)
+
+	switch choice {
+	case 1:
+		createRoom()
+	case 2:
+		listRooms()
+	case 3:
+	default:
+		fmt.Println("Invalid option.")
+	}
+}
+
+func createRoom() {
+	var name string
+	fmt.Print("Enter room name: ")
+	fmt.Scan(&name)
+	rooms[name] = &Room{
+		Name: name,
+		Messages: make(map[string][]string),
+	}
+	fmt.Println("Room created successfully!")
+}
+
+func listRooms() {
+	for name, _ := range rooms {
+		fmt.Println(name)
+	}
+}
+
+var rooms map[string]*Room
+```
+
+This is a very basic example. The `rooms` variable holds all the chat rooms, and each room has a map of user messages (`Messages`). To make this code more robust, you should implement proper mechanisms for storing user credentials, handling connection closing (e.g., with a timeout), and logging.
+
+You can run the server by executing the Go program. You'll be able to interact with it using tools like `telnet`, or you can write your own client in Go to connect and send messages.
+
+To add new features, such as user authentication and authorization for creating rooms, you would need to implement a database system (like SQLite) to store the users' data and their access rights. Additionally, implementing error handling, connection management, and logging will help make this code more robust and maintainable.

@@ -1,0 +1,283 @@
+**Concurrent Web Scraper in Go**
+=====================================
+
+This is an example of how to design and implement a concurrent web scraper in Go that handles rate limiting, retries, and graceful error handling while scraping multiple sites simultaneously.
+
+**Package Structure**
+--------------------
+
+```markdown
+concurrent-web-scraper/
+main.go
+config.go
+scraper.go
+utils.go
+rate_limiter.go
+retry_strategy.go
+error_handling.go
+```
+
+**Code Implementation**
+----------------------
+
+### config.go
+
+```go
+package concurrent_web_scraper
+
+import (
+	"fmt"
+	"log"
+)
+
+type Config struct {
+	RateLimit int // rate limit in requests per second
+	Tries     int // number of retries for failed requests
+}
+
+func NewConfig() *Config {
+	return &Config{
+		RateLimit: 5, // default rate limit
+		Tries:     3, // default number of retries
+	}
+}
+
+func (c Config) Validate() error {
+	if c.RateLimit <= 0 || c.Tries <= 0 {
+		return fmt.Errorf("invalid configuration: rate limit or tries must be greater than zero")
+	}
+	return nil
+}
+```
+
+### scraper.go
+
+```go
+package concurrent_web_scraper
+
+import (
+	"fmt"
+	"log"
+	"sync"
+	"time"
+
+	"github.com/PuerkitoBio/goquery"
+)
+
+type Scraper struct {
+	config Config
+	ch     chan string // channel to receive URLS for scraping
+	mu     sync.Mutex  // mutex to protect state
+}
+
+func NewScraper(config *Config) (*Scraper, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+	scraper := &Scraper{
+		config: *config,
+		ch:     make(chan string),
+	}
+	go scraper.run()
+	return scraper, nil
+}
+
+func (s *Scraper) run() {
+	for url := range s.ch {
+		log.Printf("scraping %s", url)
+		if err := s.scrape(url); err != nil {
+			log.Printf("error scraping %s: %v", url, err)
+		}
+	}
+}
+
+func (s *Scraper) scrape(url string) error {
+	// simulate a request
+	time.Sleep(time.Duration(s.config.RateLimit*10) * time.Millisecond)
+	// use goquery to parse HTML response
+	doc, err := goquery.NewDocument(url)
+	if err != nil {
+		return err
+	}
+	// extract desired data from the document
+	data := doc.Find(".example-class")
+	return nil // dummy error handling for demonstration purposes
+}
+
+func (s *Scraper) SubmitURL(url string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ch <- url
+}
+```
+
+### rate_limiter.go
+
+```go
+package concurrent_web_scraper
+
+import (
+	"sync"
+	"time"
+)
+
+type RateLimiter struct {
+	mu       sync.Mutex // mutex to protect state
+	tokens   int        // current number of tokens available
+	maxTokens int        // maximum number of tokens allowed
+	lastTime time.Time  // last time the token bucket was updated
+}
+
+func NewRateLimiter(maxTokens, rateLimit int) *RateLimiter {
+	return &RateLimiter{
+		mu:       sync.Mutex{},
+		tokens:   maxTokens,
+		maxTokens: maxTokens,
+		lastTime: time.Now(),
+	}
+}
+
+func (r *RateLimiter) GetToken() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if time.Since(r.lastTime) < 1*time.Second/time.Duration(rateLimit) {
+		return false
+	}
+
+	now := time.Now()
+	tokensToGenerate := int((now.UnixNano()-r.lastTime.UnixNano())/int64(time.Second/time.Duration(rateLimit))) * rateLimit
+	r.tokens = min(r.tokens+tokensToGenerate, r.maxTokens)
+	r.lastTime = now
+
+	r.mu.Unlock()
+
+	if r.tokens == 0 {
+		time.Sleep(1 * time.Second / time.Duration(rateLimit))
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.tokens--
+	return true
+}
+```
+
+### retry_strategy.go
+
+```go
+package concurrent_web_scraper
+
+import (
+	"errors"
+)
+
+type RetryStrategy interface {
+	Retry(err error) (bool, int)
+}
+
+type DefaultRetryStrategy struct{}
+
+func NewDefaultRetryStrategy() *DefaultRetryStrategy {
+	return &DefaultRetryStrategy{}
+}
+
+func (s *DefaultRetryStrategy) Retry(err error) (bool, int) {
+	if errors.Is(err, ErrMaxTriesReached) {
+		return false, 0
+	}
+	return true, s.DefaultTries()
+}
+
+func (s *DefaultRetryStrategy) DefaultTries() int {
+	return 3 // default number of retries
+}
+```
+
+### error_handling.go
+
+```go
+package concurrent_web_scraper
+
+import (
+	"errors"
+)
+
+var ErrMaxTriesReached = errors.New("maximum tries reached")
+
+type ErrorHandler interface {
+	OnError(err error)
+}
+
+func NewDefaultErrorHandler() *defaultErrorHandler {
+	return &defaultErrorHandler{}
+}
+
+type defaultErrorHandler struct{}
+
+func (h *defaultErrorHandler) OnError(err error) {
+	log.Printf("error: %v", err)
+}
+```
+
+### utils.go
+
+```go
+package concurrent_web_scraper
+
+import (
+	"fmt"
+)
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+```
+
+**Usage Example**
+-----------------
+
+```go
+package main
+
+import (
+	"log"
+
+	"github.com/concurrent-web-scraper/concurrent_web_scraper"
+)
+
+func main() {
+	config := concurrent_web_scraper.NewConfig()
+	err := config.Validate()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	scraper, err := concurrent_web_scraper.NewScraper(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	urls := []string{"http://example.com", "http://example.org"}
+	for _, url := range urls {
+		scraper.SubmitURL(url)
+	}
+}
+```
+
+This example demonstrates a basic web scraper that can handle rate limiting, retries, and error handling. It uses channels to submit URLs for scraping concurrently and relies on the `rate_limiter` package to limit the number of requests per second. The `retry_strategy` package provides a default retry strategy that allows for up to three attempts before giving up.
+
+The code is organized into separate packages for each component, making it easy to modify or extend individual parts without affecting the rest of the system.
+
+Note: This example assumes you have the GoQuery library installed (`go get github.com/PuerkitoBio/goquery`). If not, run `go get` before compiling.

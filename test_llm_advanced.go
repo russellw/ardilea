@@ -108,7 +108,13 @@ func retryWithBackoff(operation func() error, description string) error {
 func main() {
 	// Configuration
 	serverAddr := "192.168.0.63:11434"
-	modelName := "qwen3:30b"
+	modelName := "qwen3:30b" // default
+	
+	// Parse command line arguments
+	if len(os.Args) > 1 {
+		modelName = os.Args[1]
+	}
+	
 	baseURL := fmt.Sprintf("http://%s", serverAddr)
 
 	// Create results directory structure
@@ -123,6 +129,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	log.Printf("Testing LLM at %s with model %s (ADVANCED PROMPTS)", baseURL, modelName)
+	log.Printf("Usage: %s [model_name] (default: qwen3:30b)", os.Args[0])
 
 	// Create HTTP client with no timeout to see how long it actually takes
 	client := &http.Client{

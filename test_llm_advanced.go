@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+// Retry configuration
+const (
+	maxRetries = 5
+	baseDelay  = time.Second
+	maxDelay   = 30 * time.Second
+)
+
 type TestRequest struct {
 	Model  string `json:"model"`
 	Prompt string `json:"prompt"`
@@ -69,6 +76,35 @@ func generateFilenameFromPrompt(prompt string) string {
 	return filename + "_response.txt"
 }
 
+func retryWithBackoff(operation func() error, description string) error {
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := time.Duration(attempt) * baseDelay
+			if delay > maxDelay {
+				delay = maxDelay
+			}
+			log.Printf("Retry attempt %d/%d for %s after %v delay (last error: %v)", 
+				attempt+1, maxRetries, description, delay, lastErr)
+			time.Sleep(delay)
+		}
+		
+		if err := operation(); err != nil {
+			lastErr = err
+			if attempt == maxRetries-1 {
+				return fmt.Errorf("failed after %d attempts: %v", maxRetries, err)
+			}
+			continue
+		}
+		
+		if attempt > 0 {
+			log.Printf("Successfully completed %s after %d attempts", description, attempt+1)
+		}
+		return nil
+	}
+	return lastErr
+}
+
 func main() {
 	// Configuration
 	serverAddr := "192.168.0.63:11434"
@@ -96,9 +132,21 @@ func main() {
 	// Test 1: Health check
 	log.Println("=== Test 1: Health Check ===")
 	start := time.Now()
-	resp, err := client.Get(baseURL + "/api/tags")
+	var resp *http.Response
+	err := retryWithBackoff(func() error {
+		var err error
+		resp, err = client.Get(baseURL + "/api/tags")
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return fmt.Errorf("health check failed with status %d", resp.StatusCode)
+		}
+		return nil
+	}, "health check")
 	if err != nil {
-		log.Fatalf("Failed to connect to server: %v", err)
+		log.Fatalf("Failed to connect to server after retries: %v", err)
 	}
 	resp.Body.Close()
 	log.Printf("Health check completed in %v (status: %d)", time.Since(start), resp.StatusCode)
@@ -121,29 +169,35 @@ func main() {
 	log.Printf("Sending simple prompt: %q", simplePrompt)
 	start = time.Now()
 
-	resp, err = client.Post(
-		baseURL+"/api/generate",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		log.Fatalf("Failed to send request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		log.Fatalf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("Failed to read response: %v", err)
-	}
-
 	var response TestResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		log.Fatalf("Failed to parse response: %v", err)
+	err = retryWithBackoff(func() error {
+		resp, err := client.Post(
+			baseURL+"/api/generate",
+			"application/json",
+			bytes.NewBuffer(jsonData),
+		)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read response: %v", err)
+		}
+
+		if err := json.Unmarshal(body, &response); err != nil {
+			return fmt.Errorf("failed to parse response: %v", err)
+		}
+		return nil
+	}, "simple prompt")
+	if err != nil {
+		log.Fatalf("Failed to complete simple prompt after retries: %v", err)
 	}
 
 	duration := time.Since(start)
@@ -199,33 +253,35 @@ func main() {
 		log.Printf("Sending advanced programming prompt %d...", i+1)
 		start = time.Now()
 
-		resp, err = client.Post(
-			baseURL+"/api/generate",
-			"application/json",
-			bytes.NewBuffer(jsonData),
-		)
-		if err != nil {
-			log.Printf("Failed to send advanced programming request %d: %v", i+1, err)
-			continue
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			log.Printf("Advanced programming API request %d failed with status %d: %s", i+1, resp.StatusCode, string(body))
-			resp.Body.Close()
-			continue
-		}
-
-		body, err = io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			log.Printf("Failed to read advanced programming response %d: %v", i+1, err)
-			continue
-		}
-
 		var response TestResponse
-		if err := json.Unmarshal(body, &response); err != nil {
-			log.Printf("Failed to parse advanced programming response %d: %v", i+1, err)
+		err = retryWithBackoff(func() error {
+			resp, err := client.Post(
+				baseURL+"/api/generate",
+				"application/json",
+				bytes.NewBuffer(jsonData),
+			)
+			if err != nil {
+				return err
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(resp.Body)
+				return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+			}
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return fmt.Errorf("failed to read response: %v", err)
+			}
+
+			if err := json.Unmarshal(body, &response); err != nil {
+				return fmt.Errorf("failed to parse response: %v", err)
+			}
+			return nil
+		}, fmt.Sprintf("advanced programming prompt %d", i+1))
+		if err != nil {
+			log.Printf("Failed to complete advanced programming prompt %d after retries: %v", i+1, err)
 			continue
 		}
 
@@ -265,28 +321,37 @@ func main() {
 	jsonData, _ = json.Marshal(modelReq)
 
 	start = time.Now()
-	resp, err = client.Post(
-		baseURL+"/api/show",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		log.Printf("Failed to get model info: %v", err)
-	} else {
+	err = retryWithBackoff(func() error {
+		resp, err := client.Post(
+			baseURL+"/api/show",
+			"application/json",
+			bytes.NewBuffer(jsonData),
+		)
+		if err != nil {
+			return err
+		}
 		defer resp.Body.Close()
-		log.Printf("Model info request completed in %v (status: %d)", time.Since(start), resp.StatusCode)
-		if resp.StatusCode == http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			var modelInfo map[string]interface{}
-			if json.Unmarshal(body, &modelInfo) == nil {
-				if license, ok := modelInfo["license"].(string); ok {
-					log.Printf("Model license: %s", license)
-				}
-				if size, ok := modelInfo["size"].(float64); ok {
-					log.Printf("Model size: %.2f GB", size/1e9)
-				}
+		
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("model info request failed with status %d", resp.StatusCode)
+		}
+		
+		body, _ := io.ReadAll(resp.Body)
+		var modelInfo map[string]interface{}
+		if json.Unmarshal(body, &modelInfo) == nil {
+			if license, ok := modelInfo["license"].(string); ok {
+				log.Printf("Model license: %s", license)
+			}
+			if size, ok := modelInfo["size"].(float64); ok {
+				log.Printf("Model size: %.2f GB", size/1e9)
 			}
 		}
+		return nil
+	}, "model info")
+	if err != nil {
+		log.Printf("Failed to get model info after retries: %v", err)
+	} else {
+		log.Printf("Model info request completed in %v", time.Since(start))
 	}
 
 	log.Println("\n=== Advanced Test Summary ===")

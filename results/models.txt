@@ -1,0 +1,7 @@
+NAME                         ID              SIZE      MODIFIED    
+qwen3:30b                    0b28110b7a33    18 GB     2 weeks ago    
+codellama:34b                685be00e1532    19 GB     2 weeks ago    
+mistral:latest               6577803aa9a0    4.4 GB    2 weeks ago    
+deepseek-r1:8b               6995872bfe4c    5.2 GB    2 weeks ago    
+llama3.1:8b-instruct-q8_0    b158ded76fa0    8.5 GB    2 weeks ago    
+qwen2.5-coder:14b            9ec8897f747e    9.0 GB    4 weeks ago    

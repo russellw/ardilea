@@ -1,0 +1,515 @@
+Creating a complete lexer, parser, and AST evaluator for a simple programming language in Go is a complex task that involves several steps. Below, I'll provide a simplified example to illustrate the basic structure of how you might implement such a system. This example will include support for functions, variables, and basic control flow (if-else statements).
+
+### Step 1: Define the Lexer
+
+The lexer breaks down input code into tokens.
+
+```go
+package main
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+type TokenType string
+
+const (
+	ILLEGAL = "ILLEGAL"
+	EOF     = "EOF"
+
+	IDENT   = "IDENT" // add, foobar, x, y, ...
+	INT     = "INT"   // 1345
+	ASSIGN  = "="
+	PLUS    = "+"
+	MINUS   = "-"
+	BANG    = "!"
+	ASTERISK = "*"
+	SLASH   = "/"
+	LT      = "<"
+	GT      = ">"
+
+	COMMA     = ","
+	SEMICOLON = ";"
+
+	LPAREN  = "("
+	RPAREN  = ")"
+	LBRACE  = "{"
+	RBRACE  = "}"
+
+	FUNCTION = "FUNCTION"
+	LET     = "LET"
+	RETURN  = "RETURN"
+	IF      = "IF"
+	ELSE    = "ELSE"
+)
+
+type Token struct {
+	Type    TokenType
+	Literal string
+}
+
+var keywords = map[string]TokenType{
+	"fn":     FUNCTION,
+	"let":    LET,
+	"return": RETURN,
+	"if":     IF,
+	"else":   ELSE,
+}
+
+func LookupIdent(ident string) TokenType {
+	if tok, ok := keywords[ident]; ok {
+		return tok
+	}
+	return IDENT
+}
+
+type Lexer struct {
+	input        string
+	position     int  // current position in input (points to current char)
+	readPosition int  // current reading position in input (after current char)
+	ch           byte // current char under examination
+}
+
+func New(input string) *Lexer {
+	l := &Lexer{input: input}
+	l.readChar()
+	return l
+}
+
+func (l *Lexer) readChar() {
+	if l.readPosition >= len(l.input) {
+		l.ch = 0
+	} else {
+		l.ch = l.input[l.readPosition]
+	}
+	l.position = l.readPosition
+	l.readPosition += 1
+}
+
+func (l *Lexer) NextToken() Token {
+	var tok Token
+
+	l.skipWhitespace()
+
+	switch l.ch {
+	case '=':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = Token{Type: EQ, Literal: string(ch) + string(l.ch)}
+		} else {
+			tok = newToken(ASSIGN, l.ch)
+		}
+	case '+':
+		tok = newToken(PLUS, l.ch)
+	case '-':
+		tok = newToken(MINUS, l.ch)
+	case '!':
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			tok = Token{Type: NOT_EQ, Literal: string(ch) + string(l.ch)}
+		} else {
+			tok = newToken(BANG, l.ch)
+		}
+	case '/':
+		tok = newToken(SLASH, l.ch)
+	case '*':
+		tok = newToken(ASTERISK, l.ch)
+	case '<':
+		tok = newToken(LT, l.ch)
+	case '>':
+		tok = newToken(GT, l.ch)
+	case ',':
+		tok = newToken(COMMA, l.ch)
+	case ';':
+		tok = newToken(SEMICOLON, l.ch)
+	case '(':
+		tok = newToken(LPAREN, l.ch)
+	case ')':
+		tok = newToken(RPAREN, l.ch)
+	case '{':
+		tok = newToken(LBRACE, l.ch)
+	case '}':
+		tok = newToken(RBRACE, l.ch)
+	case 0:
+		tok.Literal = ""
+		tok.Type = EOF
+	default:
+		if isLetter(l.ch) {
+			tok.Literal = l.readIdentifier()
+			tok.Type = LookupIdent(tok.Literal)
+			return tok
+		} else if isDigit(l.ch) {
+			tok.Type = INT
+			tok.Literal = l.readNumber()
+			return tok
+		} else {
+			tok = newToken(ILLEGAL, l.ch)
+		}
+	}
+
+	l.readChar()
+	return tok
+}
+
+func (l *Lexer) skipWhitespace() {
+	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
+		l.readChar()
+	}
+}
+
+func (l *Lexer) readIdentifier() string {
+	position := l.position
+	for isLetter(l.ch) {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) readNumber() string {
+	position := l.position
+	for isDigit(l.ch) {
+		l.readChar()
+	}
+	return l.input[position:l.position]
+}
+
+func (l *Lexer) peekChar() byte {
+	if l.readPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.readPosition]
+	}
+}
+
+func newToken(tokenType TokenType, ch byte) Token {
+	return Token{Type: tokenType, Literal: string(ch)}
+}
+
+func isLetter(ch byte) bool {
+	return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_'
+}
+
+func isDigit(ch byte) bool {
+	return '0' <= ch && ch <= '9'
+}
+```
+
+### Step 2: Define the Parser
+
+The parser constructs an Abstract Syntax Tree (AST) from tokens.
+
+```go
+type Node interface{}
+
+type Statement interface {
+	Node
+	statementNode()
+}
+
+type Expression interface {
+	Node
+	expressionNode()
+}
+
+type Program struct {
+	Statements []Statement
+}
+
+func (p *Program) statementNode() {}
+
+type LetStatement struct {
+	Token token.Token // the token.LET token
+	Name  *Identifier
+	Value Expression
+}
+
+func (ls *LetStatement) statementNode() {}
+
+type Identifier struct {
+	Token token.Token // the token.IDENT token
+	Value string
+}
+
+func (i *Identifier) expressionNode() {}
+
+type ReturnStatement struct {
+	Token       token.Token // the 'return' token
+	ReturnValue Expression
+}
+
+func (rs *ReturnStatement) statementNode() {}
+
+type ExpressionStatement struct {
+	Token      token.Token // the first token of the expression
+	Expression Expression
+}
+
+func (es *ExpressionStatement) statementNode() {}
+
+type IntegerLiteral struct {
+	Token token.Token
+	Value int64
+}
+
+func (il *IntegerLiteral) expressionNode() {}
+
+type PrefixExpression struct {
+	Token    token.Token
+	Operator string
+	Right    Expression
+}
+
+func (pe *PrefixExpression) expressionNode() {}
+
+type InfixExpression struct {
+	Token    token.Token
+	Left     Expression
+	Operator string
+	Right    Expression
+}
+
+func (ie *InfixExpression) expressionNode() {}
+
+type IfExpression struct {
+	Token       token.Token // the 'if' token
+	Consequence *BlockStatement
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) expressionNode() {}
+
+type BlockStatement struct {
+	Token      token.Token // the '{' token
+	Statements []Statement
+}
+
+func (bs *BlockStatement) statementNode() {}
+```
+
+### Step 3: Define the AST Evaluator
+
+The evaluator executes the AST.
+
+```go
+type Environment map[string]Object
+
+type Object interface{}
+
+type Integer struct {
+	Value int64
+}
+
+func (i Integer) inspect() string {
+	return fmt.Sprintf("%d", i.Value)
+}
+
+func (i Integer) Type() ObjectType {
+	return INTEGER_OBJ
+}
+
+type Boolean struct {
+	Value bool
+}
+
+func (b Boolean) inspect() string {
+	return strconv.FormatBool(b.Value)
+}
+
+func (b Boolean) Type() ObjectType {
+	return BOOLEAN_OBJ
+}
+
+func Eval(node Node, env Environment) Object {
+	switch node := node.(type) {
+	case *Program:
+		return evalStatements(node.Statements, env)
+	case *ExpressionStatement:
+		return Eval(node.Expression, env)
+	case *IntegerLiteral:
+		return &Integer{Value: node.Value}
+	case *PrefixExpression:
+		right := Eval(node.Right, env)
+		if right == nil {
+			return nil
+		}
+		return evalPrefixExpression(node.Operator, right)
+	case *InfixExpression:
+		left := Eval(node.Left, env)
+		if left == nil {
+			return nil
+		}
+		right := Eval(node.Right, env)
+		if right == nil {
+			return nil
+		}
+		return evalInfixExpression(node.Operator, left, right)
+	case *BlockStatement:
+		return evalStatements(node.Statements, env)
+	case *IfExpression:
+		return evalIfExpression(node, env)
+	case *LetStatement:
+		val := Eval(node.Value, env)
+		if val != nil {
+			env[node.Name.Value] = val
+		}
+		return nil
+	case *ReturnStatement:
+		val := Eval(node.ReturnValue, env)
+		if val == nil {
+			return nil
+		}
+		return &ReturnValue{Value: val}
+	case *Identifier:
+		return evalIdentifier(node, env)
+	default:
+		fmt.Printf("unknown node type %T!\n", node)
+		return nil
+	}
+}
+
+func evalStatements(stmts []Statement, env Environment) Object {
+	var result Object
+
+	for _, stmt := range stmts {
+		result = Eval(stmt, env)
+
+		if rt, ok := result.(*ReturnValue); ok {
+			return rt.Value
+		}
+	}
+
+	return result
+}
+
+func evalPrefixExpression(operator string, right Object) Object {
+	switch operator {
+	case "!":
+		return evalBangOperatorExpression(right)
+	case "-":
+		return evalMinusPrefixOperatorExpression(right)
+	default:
+		fmt.Printf("unknown operator: %s %T\n", operator, right)
+		return nil
+	}
+}
+
+func evalInfixExpression(operator string, left, right Object) Object {
+	switch {
+	case left.Type() == INTEGER_OBJ && right.Type() == INTEGER_OBJ:
+		return evalIntegerInfixExpression(operator, left.(*Integer), right.(*Integer))
+	default:
+		fmt.Printf("unknown operator: %s %T %T\n", operator, left, right)
+		return nil
+	}
+}
+
+func evalBangOperatorExpression(right Object) Object {
+	switch right {
+	case TRUE:
+		return FALSE
+	case FALSE:
+		return TRUE
+	case NULL:
+		return TRUE
+	default:
+		return FALSE
+	}
+}
+
+func evalMinusPrefixOperatorExpression(right Object) Object {
+	value, ok := right.(*Integer)
+	if !ok {
+		fmt.Printf("unknown operator: -%T\n", right)
+		return nil
+	}
+	return &Integer{Value: -value.Value}
+}
+
+func evalIntegerInfixExpression(operator string, left, right *Integer) Object {
+	switch operator {
+	case "+":
+		return &Integer{Value: left.Value + right.Value}
+	case "-":
+		return &Integer{Value: left.Value - right.Value}
+	case "*":
+		return &Integer{Value: left.Value * right.Value}
+	case "/":
+		return &Integer{Value: left.Value / right.Value}
+	case "<":
+		return nativeBoolToBooleanObject(left.Value < right.Value)
+	case ">":
+		return nativeBoolToBooleanObject(left.Value > right.Value)
+	case "==":
+		return nativeBoolToBooleanObject(left.Value == right.Value)
+	case "!=":
+		return nativeBoolToBooleanObject(left.Value != right.Value)
+	default:
+		fmt.Printf("unknown operator: %s\n", operator)
+		return nil
+	}
+}
+
+func evalIfExpression(ie *IfExpression, env Environment) Object {
+	condition := Eval(ie.Condition, env)
+	if isTruthy(condition) {
+		return Eval(ie.Consequence, env)
+	} else if ie.Alternative != nil {
+		return Eval(ie.Alternative, env)
+	} else {
+		return NULL
+	}
+}
+
+func evalIdentifier(node *Identifier, env Environment) Object {
+	val, ok := env[node.Value]
+	if !ok {
+		fmt.Printf("identifier not found: %s\n", node.Value)
+		return nil
+	}
+	return val
+}
+
+func isTruthy(obj Object) bool {
+	switch obj {
+	case NULL:
+		return false
+	case TRUE:
+		return true
+	case FALSE:
+		return false
+	default:
+		return true
+	}
+}
+```
+
+### Step 4: Main Function
+
+Finally, the main function ties everything together.
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	input := `let x = 5;
+				let y = 10;
+				if (x < y) {
+					return x + y;
+				} else {
+					return x - y;
+				}`
+	l := New(input)
+	p := Parse(l)
+	fmt.Printf("parsed program: %+v\n", p)
+}
+```
+
+This is a simplified example and does not cover all aspects of language design, such as error handling, more complex control structures, or function definitions. However, it provides a basic framework for building a lexer, parser, and AST evaluator in Go.

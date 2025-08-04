@@ -43,7 +43,7 @@ Thumbs.db
 *.log
 
 # LLM test response files
-results/
+#results/
 
 # Environment files
 .env

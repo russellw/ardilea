@@ -1,0 +1,21 @@
+<think>
+Okay, the user is asking "Hello, what is 2+2?" Let me think about how to approach this. First, I need to make sure I understand the question correctly. It's a straightforward arithmetic problem, but maybe the user is testing if I can handle basic math or there's a trick here.
+
+In standard arithmetic, 2 + 2 equals 4. That's the basic addition. But sometimes people might ask this question in a different context, like in a different number base or with some wordplay. For example, in base 3, 2 + 2 would be 11, but that's probably not the case here. The user didn't specify any context, so I should assume it's in base 10.
+
+Another angle: maybe the user is looking for a more detailed explanation. They might want to know the steps involved in adding 2 and 2. So, breaking it down, 2 is a number, adding another 2 means combining two groups of two items. So, 2 apples plus 2 apples make 4 apples. That's the basic concept.
+
+But the user might also be expecting a simple answer. Since the question is so direct, the answer is likely 4. However, I should check if there's any possible ambiguity. For instance, in some contexts, like in programming, 2 + 2 could be part of a larger expression, but without more information, it's safe to stick to the basic math.
+
+Wait, could there be a cultural or linguistic trick? For example, in some languages, the word for two might be different, but the question is in English, so probably not. Also, the user wrote "2+2" which is standard notation.
+
+I should also consider if the user is a child learning math and needs a more visual explanation. Maybe using fingers or objects to demonstrate. But since the user hasn't asked for that, a direct answer is better.
+
+Another thought: sometimes people use "2+2" as a metaphor or in a riddle. For example, "What's 2+2?" could be a trick question where the answer is something else, but I can't think of any common ones. Unless it's a play on words, like in a different language or a pun. But without more context, it's hard to say.
+
+So, the safest and most accurate answer is 4. But I should present it clearly and confirm that it's in the standard decimal system. Maybe add a brief explanation to cover any possible doubts.
+</think>
+
+In standard arithmetic (base 10), **2 + 2 = 4**. This is a fundamental addition problem where two units combined with another two units result in four units. 
+
+If you're asking in a different context (e.g., modular arithmetic, wordplay, or a riddle), feel free to clarify! But under normal circumstances, the answer is **4**. 😊

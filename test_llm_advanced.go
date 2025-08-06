@@ -16,9 +16,8 @@ import (
 
 // Retry configuration
 const (
-	maxRetries = 5
-	baseDelay  = time.Second
-	maxDelay   = 30 * time.Second
+	baseDelay = time.Second
+	maxDelay  = 30 * time.Second
 )
 
 type TestRequest struct {
@@ -78,22 +77,19 @@ func generateFilenameFromPrompt(prompt string) string {
 
 func retryWithBackoff(operation func() error, description string) error {
 	var lastErr error
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; ; attempt++ {
 		if attempt > 0 {
 			delay := time.Duration(attempt) * baseDelay
 			if delay > maxDelay {
 				delay = maxDelay
 			}
-			log.Printf("Retry attempt %d/%d for %s after %v delay (last error: %v)", 
-				attempt+1, maxRetries, description, delay, lastErr)
+			log.Printf("Retry attempt %d for %s after %v delay (last error: %v)", 
+				attempt+1, description, delay, lastErr)
 			time.Sleep(delay)
 		}
 		
 		if err := operation(); err != nil {
 			lastErr = err
-			if attempt == maxRetries-1 {
-				return fmt.Errorf("failed after %d attempts: %v", maxRetries, err)
-			}
 			continue
 		}
 		
@@ -102,7 +98,6 @@ func retryWithBackoff(operation func() error, description string) error {
 		}
 		return nil
 	}
-	return lastErr
 }
 
 func main() {

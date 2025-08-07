@@ -1,0 +1,30 @@
+<think>
+First, the user asked: "Hello, what is 2+2?"
+
+This seems like a simple arithmetic question. I need to respond with the correct answer.
+
+The calculation is straightforward: 2 + 2 equals 4.
+
+I should make my response friendly and engaging since they started with "Hello." Maybe add some context or humor to keep it light-hearted, but not overdo it because this might be testing basic functionality.
+
+Possible responses:
+
+- Just give the answer directly.
+
+- Acknowledge the greeting and then provide the answer.
+
+Since I'm an AI assistant, I should maintain a helpful and polite tone. The user said "Hello," so I can start with that or respond to it briefly.
+
+Also, ensure my response is clear and unambiguous. No need for complex explanations unless they ask.
+
+Final answer: 4
+
+But let's think about the wording. They used "what is" which might be expecting a direct numerical answer or perhaps something more descriptive, but in this context, just stating the number should suffice.
+
+I could say: "Hello! The sum of 2 and 2 is 4."
+
+If I want to be extra helpful, I might add that it's a basic arithmetic operation, but that might not be necessary unless they're learning or something.
+
+The user didn't provide any additional context, so keep it simple.
+</think>
+Hello! That's a straightforward one. The sum of 2 and 2 is 4. 😊
